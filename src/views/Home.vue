@@ -31,34 +31,20 @@
                 <el-button type="danger" icon="el-icon-delete" circle></el-button>
             </el-col>
         </el-row>
-        <el-table
-          :data="carList"
-          border stripe
-          style="width: 100%">
-            <el-table-column
-              prop="carName"
-              label="汽车名称"
-              width="180">
-            </el-table-column>
-            <el-table-column
-              prop="price"
-              label="销售价格"
-              width="180">
-            </el-table-column>
-            <el-table-column
-              prop="stock"
-              label="库存数量">
-            </el-table-column>
+        <el-table :data="carList" border stripe style="width: 100%">
+            <el-table-column prop="carName" label="汽车名称" width="180"></el-table-column>
+            <el-table-column prop="price" label="销售价格" width="180"></el-table-column>
+            <el-table-column prop="stock" label="库存数量"></el-table-column>
         </el-table>
         <el-pagination
           background
           @size-change="changeSize"
           @current-change="changeCurrent"
-          :current-page="currentPage"
-          :page-sizes="listSize"
-          :page-size="pageSize"
-          layout="total,sizes,pager,jumper"
-          :total="totalSize">
+          :current-page="page.current"
+          :page-size="page.size"
+          :page-sizes="page.sizes"
+          layout="total,sizes,prev,pager,next,jumper"
+          :total="page.total">
         </el-pagination>
     </div>
 </template>
@@ -75,10 +61,12 @@
                     maxPrice: '',
                 },
                 carList: [],//空数组,要从后端获取数据
-                totalSize : 0,//默认为0,要从后端获取数据
-                currentPage : 1,//当前页
-                pageSize : 2,//默认每页条数
-                listSize : [2,4,10]//下拉选项每页条数,
+                page : {
+                    current : 1,//当前页,page.currentPage
+                    total : 0,
+                    size : 2,//默认10每页条数,page.pageSize
+                    sizes : [2,4,10]//下拉选项每页条数,page.listSize
+                }
             }
         },
         /*html加载完成之前，执行。执行顺序：父组件-子组件,在模板渲染成html前调用，即通常初始化某些属性值，然后再渲染成视图。*/
@@ -94,13 +82,10 @@
             },
             onReset : function (){
             },
-            search : function(pageIndex){
-                if (!pageIndex){//未传值时默认为1
-                    pageIndex = 1;
-                }
+            search : function(){
                 var params = {
-                    start : (pageIndex - 1) * this.pageSize,
-                    pageSize : this.pageSize,
+                    current : this.page.current,
+                    pageSize : this.page.size,
                 };
                 //这个写法有值时才传递
                 if(this.searchForm.carName){
@@ -112,13 +97,14 @@
                 if(this.searchForm.maxPrice){
                     params.maxPrice = this.searchForm.maxPrice
                 }
+                var _this = this;
                 this.$axios.get('http://192.168.3.108:8082/api/listData',{
                     params : params
                 }).then(data =>{
                     data = data.data;
                     if (data.code === 200){
-                        this.totalSize = data.total;
-                        this.carList = data.data;
+                        _this.page.total = data.total;
+                        _this.carList = data.data;
                     }
                 }).catch(err =>{
                     console.info(err);
@@ -126,18 +112,14 @@
             },
             //更改每页条数触发
             changeSize : function (pageSize){
-                this.pageSize = pageSize;
+                this.page.current = 1;
+                this.page.size = pageSize;
                 this.search();
             },
             /*当前页更改时触发*/
-            changeCurrent : function (pageIndex){
-                this.search(pageIndex);
-            },
-            clickPrev : function (pageIndex){//上一页和下一页会走两次
-                this.changeCurrent(pageIndex,pageIndex);
-            },
-            clickNext : function (pageIndex){//上一页和下一页会走两次
-                this.changeCurrent(pageIndex,pageIndex);
+            changeCurrent : function (page){
+                this.page.current = page;
+                this.search();
             }
         }
     }
